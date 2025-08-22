@@ -179,7 +179,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   selectedTileColor: Colors.blue.withOpacity(0.3),
                   leading: CircleAvatar(child: Text('${index + 1}')),
                   title: Text(
-                    item.simplified,
+                    item.pinyinWithTone,
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: isSelected
@@ -188,7 +188,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
                   subtitle: Text(
-                    item.pinyinWithTone,
+                    item.simplified,
                     style: TextStyle(
                       fontSize: 16,
                       color: isSelected ? Colors.blue[700] : Colors.grey[600],
