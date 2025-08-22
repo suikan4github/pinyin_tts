@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import 'generate_source_hanzi_list.dart';
 
 void main() {
@@ -46,6 +48,7 @@ class _MyHomePageState extends State<MyHomePage> {
   int currentIndex = 0;
   bool isPlaying = false;
   bool isPaused = false;
+  bool isSaving = false;
 
   @override
   void initState() {
@@ -159,6 +162,57 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  Future<void> saveMarkedItemsToFile() async {
+    if (markedItems.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('マークされたアイテムがありません')));
+      return;
+    }
+
+    setState(() {
+      isSaving = true;
+    });
+
+    try {
+      // アプリのドキュメントディレクトリを取得
+      final directory = await getApplicationDocumentsDirectory();
+      final fileName = 'pinyin_marked_characters.txt';
+      final file = File('${directory.path}/$fileName');
+
+      // マークされたアイテムの簡体字文字を収集
+      final markedCharacters = <String>[];
+      final sortedMarkedItems = markedItems.toList()..sort();
+      for (int index in sortedMarkedItems) {
+        if (index < hanziList.length) {
+          markedCharacters.add(hanziList[index].simplified);
+        }
+      }
+
+      // ファイル内容を作成
+      final fileContent = markedCharacters.join('\n');
+
+      // ファイルに保存
+      await file.writeAsString(fileContent);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '$fileName を保存しました (${markedCharacters.length}文字)\nパス: ${file.path}',
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('保存に失敗しました: $e')));
+    } finally {
+      setState(() {
+        isSaving = false;
+      });
+    }
+  }
+
   void goToNextMarkedItem() {
     if (markedItems.isEmpty) return;
 
@@ -219,6 +273,17 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
         actions: [
+          IconButton(
+            onPressed: isSaving ? null : saveMarkedItemsToFile,
+            icon: isSaving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.save),
+            tooltip: 'Save Marked Items',
+          ),
           IconButton(
             onPressed: markedItems.isEmpty ? null : goToPreviousMarkedItem,
             icon: const Icon(Icons.skip_previous),
@@ -285,6 +350,23 @@ class _MyHomePageState extends State<MyHomePage> {
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
+          FloatingActionButton(
+            heroTag: "save",
+            onPressed: isSaving ? null : saveMarkedItemsToFile,
+            tooltip: 'Save Marked Items',
+            backgroundColor: isSaving ? Colors.grey : Colors.green,
+            child: isSaving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.save),
+          ),
+          const SizedBox(height: 10),
           FloatingActionButton(
             heroTag: "prev_marked",
             onPressed: markedItems.isEmpty ? null : goToPreviousMarkedItem,
