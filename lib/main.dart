@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import 'generate_source_hanzi_list.dart';
 
@@ -49,6 +50,7 @@ class _MyHomePageState extends State<MyHomePage> {
   bool isPlaying = false;
   bool isPaused = false;
   bool isSaving = false;
+  String? lastSavedFilePath;
 
   @override
   void initState() {
@@ -195,10 +197,19 @@ class _MyHomePageState extends State<MyHomePage> {
       // ファイルに保存
       await file.writeAsString(fileContent);
 
+      // 最後に保存されたファイルパスを更新
+      setState(() {
+        lastSavedFilePath = file.path;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             '$fileName を保存しました (${markedCharacters.length}文字)\nパス: ${file.path}',
+          ),
+          action: SnackBarAction(
+            label: 'シェア',
+            onPressed: () => shareFile(file.path),
           ),
         ),
       );
@@ -210,6 +221,25 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() {
         isSaving = false;
       });
+    }
+  }
+
+  Future<void> shareFile(String filePath) async {
+    try {
+      final file = File(filePath);
+      if (await file.exists()) {
+        await Share.shareXFiles(
+          [XFile(filePath)],
+          text: 'マークされた漢字のリスト',
+          subject: 'Pinyin TTS - マークされた漢字',
+        );
+      } else {
+        throw Exception('ファイルが見つかりません');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ファイル共有に失敗しました: $e')),
+      );
     }
   }
 
@@ -283,6 +313,13 @@ class _MyHomePageState extends State<MyHomePage> {
                   )
                 : const Icon(Icons.save),
             tooltip: 'Save Marked Items',
+          ),
+          IconButton(
+            onPressed: lastSavedFilePath != null
+                ? () => shareFile(lastSavedFilePath!)
+                : null,
+            icon: const Icon(Icons.share),
+            tooltip: 'Share Last Saved File',
           ),
           IconButton(
             onPressed: markedItems.isEmpty ? null : goToPreviousMarkedItem,
@@ -365,6 +402,16 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   )
                 : const Icon(Icons.save),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton(
+            heroTag: "share",
+            onPressed: lastSavedFilePath != null
+                ? () => shareFile(lastSavedFilePath!)
+                : null,
+            tooltip: 'Share Last Saved File',
+            backgroundColor: lastSavedFilePath != null ? null : Colors.grey,
+            child: const Icon(Icons.share),
           ),
           const SizedBox(height: 10),
           FloatingActionButton(

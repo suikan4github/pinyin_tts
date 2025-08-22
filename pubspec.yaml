@@ -38,6 +38,7 @@ dependencies:
   googleapis: ^14.0.0
   google_sign_in: ^7.1.1
   path_provider: ^2.1.5
+  share_plus: ^11.1.0
 
 dev_dependencies:
   flutter_test:
