@@ -39,6 +39,7 @@ class HanziItem {
 
 class _MyHomePageState extends State<MyHomePage> {
   late FlutterTts flutterTts;
+  late ScrollController scrollController;
   List<HanziItem> hanziList = [];
   int currentIndex = 0;
   bool isPlaying = false;
@@ -47,6 +48,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    scrollController = ScrollController();
     initTts();
     loadHanziList();
   }
@@ -108,6 +110,7 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() {
         currentIndex++;
       });
+      scrollToCurrentItem();
       if (isPlaying && !isPaused) {
         speak(hanziList[currentIndex].simplified);
       }
@@ -120,16 +123,32 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  void scrollToCurrentItem() {
+    if (scrollController.hasClients) {
+      // ListTileの高さを約72pxと想定してスクロール位置を計算
+      const itemHeight = 72.0;
+      final targetOffset = currentIndex * itemHeight;
+      
+      scrollController.animateTo(
+        targetOffset,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
   void onItemTapped(int index) {
     setState(() {
       currentIndex = index;
     });
+    scrollToCurrentItem();
     speak(hanziList[index].simplified);
   }
 
   @override
   void dispose() {
     flutterTts.stop();
+    scrollController.dispose();
     super.dispose();
   }
 
@@ -149,6 +168,7 @@ class _MyHomePageState extends State<MyHomePage> {
       body: hanziList.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : ListView.builder(
+              controller: scrollController,
               itemCount: hanziList.length,
               itemBuilder: (context, index) {
                 final item = hanziList[index];
