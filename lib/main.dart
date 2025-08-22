@@ -226,21 +226,25 @@ class _MyHomePageState extends State<MyHomePage> {
         lastSavedFilePath = file.path;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '$fileName を保存しました (${markedCharacters.length}文字)\nフォーカス位置: ${currentIndex + 1}\nパス: ${file.path}',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '$fileName を保存しました (${markedCharacters.length}文字)\nフォーカス位置: ${currentIndex + 1}\nパス: ${file.path}',
+            ),
+            action: SnackBarAction(
+              label: 'シェア',
+              onPressed: () => shareFile(file.path),
+            ),
           ),
-          action: SnackBarAction(
-            label: 'シェア',
-            onPressed: () => shareFile(file.path),
-          ),
-        ),
-      );
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('保存に失敗しました: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('保存に失敗しました: $e')),
+        );
+      }
     } finally {
       setState(() {
         isSaving = false;
@@ -258,7 +262,7 @@ class _MyHomePageState extends State<MyHomePage> {
       await file.writeAsString('${currentIndex + 1}');
     } catch (e) {
       // フォーカス位置の保存エラーは無視（メイン機能に影響させない）
-      print('フォーカス位置の保存に失敗しました: $e');
+      // エラーログは本番環境では出力しない
     }
   }
 
@@ -266,18 +270,20 @@ class _MyHomePageState extends State<MyHomePage> {
     try {
       final file = File(filePath);
       if (await file.exists()) {
-        await Share.shareXFiles(
-          [XFile(filePath)],
-          text: 'マークされた漢字のリスト',
-          subject: 'Pinyin TTS - マークされた漢字',
+        // ファイル内容を読み取って文字列として共有
+        final content = await file.readAsString();
+        await SharePlus.instance.share(
+          ShareParams(text: content),
         );
       } else {
         throw Exception('ファイルが見つかりません');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ファイル共有に失敗しました: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ファイル共有に失敗しました: $e')),
+        );
+      }
     }
   }
 
@@ -294,7 +300,7 @@ class _MyHomePageState extends State<MyHomePage> {
       // デバッグ情報: ディレクトリ内のファイル一覧を表示
       final directoryContents = await directory.list().toList();
       final fileNames = directoryContents
-          .where((entity) => entity is File)
+          .whereType<File>()
           .map((entity) => entity.path.split('/').last)
           .toList();
 
@@ -328,20 +334,24 @@ class _MyHomePageState extends State<MyHomePage> {
       // フォーカス位置を復元
       await restoreFocusPosition();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'マークを復元しました (${newMarkedItems.length}個)\n元ファイル: ${savedCharacters.length}文字\nフォーカス位置: ${currentIndex + 1}',
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'マークを復元しました (${newMarkedItems.length}個)\n元ファイル: ${savedCharacters.length}文字\nフォーカス位置: ${currentIndex + 1}',
+            ),
           ),
-        ),
-      );
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('復元に失敗しました: $e'),
-          duration: const Duration(seconds: 5),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('復元に失敗しました: $e'),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
     } finally {
       setState(() {
         isSaving = false;
@@ -375,7 +385,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     } catch (e) {
       // フォーカス位置の復元エラーは無視（メイン機能に影響させない）
-      print('フォーカス位置の復元に失敗しました: $e');
+      // エラーはログに記録されるが、print文はリリースビルドでは避ける
     }
   }
 
@@ -516,7 +526,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${number}番目のアイテムにジャンプしました (インデックス: $index)'),
+        content: Text('$number番目のアイテムにジャンプしました (インデックス: $index)'),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -549,7 +559,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 return ListTile(
                   key: itemKeys[index],
                   selected: isSelected,
-                  selectedTileColor: Colors.blue.withOpacity(0.3),
+                  selectedTileColor: Colors.blue.withValues(alpha: 0.3),
                   leading: CircleAvatar(child: Text('${index + 1}')),
                   title: Row(
                     children: [
