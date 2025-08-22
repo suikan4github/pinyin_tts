@@ -218,6 +218,9 @@ class _MyHomePageState extends State<MyHomePage> {
       // ファイルに保存
       await file.writeAsString(fileContent);
 
+      // フォーカス位置を別ファイルに保存
+      await saveFocusPosition();
+
       // 最後に保存されたファイルパスを更新
       setState(() {
         lastSavedFilePath = file.path;
@@ -226,7 +229,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '$fileName を保存しました (${markedCharacters.length}文字)\nパス: ${file.path}',
+            '$fileName を保存しました (${markedCharacters.length}文字)\nフォーカス位置: ${currentIndex + 1}\nパス: ${file.path}',
           ),
           action: SnackBarAction(
             label: 'シェア',
@@ -242,6 +245,20 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() {
         isSaving = false;
       });
+    }
+  }
+
+  Future<void> saveFocusPosition() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      const fileName = 'pinyin_focus_position.txt';
+      final file = File('${directory.path}/$fileName');
+      
+      // フォーカス位置を1-basedで保存
+      await file.writeAsString('${currentIndex + 1}');
+    } catch (e) {
+      // フォーカス位置の保存エラーは無視（メイン機能に影響させない）
+      print('フォーカス位置の保存に失敗しました: $e');
     }
   }
 
@@ -308,10 +325,13 @@ class _MyHomePageState extends State<MyHomePage> {
         markedItems = newMarkedItems;
       });
 
+      // フォーカス位置を復元
+      await restoreFocusPosition();
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'マークを復元しました (${newMarkedItems.length}個)\n元ファイル: ${savedCharacters.length}文字',
+            'マークを復元しました (${newMarkedItems.length}個)\n元ファイル: ${savedCharacters.length}文字\nフォーカス位置: ${currentIndex + 1}',
           ),
         ),
       );
@@ -326,6 +346,36 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() {
         isSaving = false;
       });
+    }
+  }
+
+  Future<void> restoreFocusPosition() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      const fileName = 'pinyin_focus_position.txt';
+      final file = File('${directory.path}/$fileName');
+      
+      if (await file.exists()) {
+        final content = await file.readAsString();
+        final position = int.tryParse(content.trim());
+        
+        if (position != null && position >= 1 && position <= hanziList.length) {
+          final index = position - 1; // 1-based to 0-based
+          setState(() {
+            currentIndex = index;
+          });
+          
+          // フォーカス位置を復元後にスクロール
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Future.delayed(const Duration(milliseconds: 100), () {
+              scrollToCurrentItem();
+            });
+          });
+        }
+      }
+    } catch (e) {
+      // フォーカス位置の復元エラーは無視（メイン機能に影響させない）
+      print('フォーカス位置の復元に失敗しました: $e');
     }
   }
 
