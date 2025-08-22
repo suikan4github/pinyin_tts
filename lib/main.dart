@@ -243,6 +243,71 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  Future<void> restoreMarkedItemsFromFile() async {
+    try {
+      setState(() {
+        isSaving = true; // ローディング表示に使用
+      });
+
+      final directory = await getApplicationDocumentsDirectory();
+      const fileName = 'pinyin_marked_characters.txt';
+      final file = File('${directory.path}/$fileName');
+
+      // デバッグ情報: ディレクトリ内のファイル一覧を表示
+      final directoryContents = await directory.list().toList();
+      final fileNames = directoryContents
+          .where((entity) => entity is File)
+          .map((entity) => entity.path.split('/').last)
+          .toList();
+
+      if (!await file.exists()) {
+        throw Exception(
+          '保存されたファイルが見つかりません\n'
+          'ファイルパス: ${file.path}\n'
+          'ディレクトリ内のファイル: ${fileNames.join(", ")}\n'
+          'まず保存してから復元を試してください。',
+        );
+      }
+
+      final content = await file.readAsString();
+      final savedCharacters = content
+          .split('\n')
+          .where((line) => line.trim().isNotEmpty)
+          .toList();
+
+      // 現在のリストから該当する漢字を探してマーク
+      final newMarkedItems = <int>{};
+      for (int i = 0; i < hanziList.length; i++) {
+        if (savedCharacters.contains(hanziList[i].simplified)) {
+          newMarkedItems.add(i);
+        }
+      }
+
+      setState(() {
+        markedItems = newMarkedItems;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'マークを復元しました (${newMarkedItems.length}個)\n元ファイル: ${savedCharacters.length}文字',
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('復元に失敗しました: $e'),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    } finally {
+      setState(() {
+        isSaving = false;
+      });
+    }
+  }
+
   void goToNextMarkedItem() {
     if (markedItems.isEmpty) return;
 
@@ -302,40 +367,6 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
-        actions: [
-          IconButton(
-            onPressed: isSaving ? null : saveMarkedItemsToFile,
-            icon: isSaving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.save),
-            tooltip: 'Save Marked Items',
-          ),
-          IconButton(
-            onPressed: lastSavedFilePath != null
-                ? () => shareFile(lastSavedFilePath!)
-                : null,
-            icon: const Icon(Icons.share),
-            tooltip: 'Share Last Saved File',
-          ),
-          IconButton(
-            onPressed: markedItems.isEmpty ? null : goToPreviousMarkedItem,
-            icon: const Icon(Icons.skip_previous),
-            tooltip: 'Previous Marked Item',
-          ),
-          IconButton(
-            onPressed: markedItems.isEmpty ? null : goToNextMarkedItem,
-            icon: const Icon(Icons.skip_next),
-            tooltip: 'Next Marked Item',
-          ),
-          IconButton(
-            onPressed: isPlaying && !isPaused ? pausePlaying : startPlaying,
-            icon: Icon(isPlaying && !isPaused ? Icons.pause : Icons.play_arrow),
-          ),
-        ],
       ),
       body: hanziList.isEmpty
           ? const Center(child: CircularProgressIndicator())
@@ -388,30 +419,17 @@ class _MyHomePageState extends State<MyHomePage> {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           FloatingActionButton(
-            heroTag: "save",
-            onPressed: isSaving ? null : saveMarkedItemsToFile,
-            tooltip: 'Save Marked Items',
-            backgroundColor: isSaving ? Colors.grey : Colors.green,
-            child: isSaving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.save),
+            heroTag: "start",
+            onPressed: startPlaying,
+            tooltip: 'Start',
+            child: const Icon(Icons.play_arrow),
           ),
           const SizedBox(height: 10),
           FloatingActionButton(
-            heroTag: "share",
-            onPressed: lastSavedFilePath != null
-                ? () => shareFile(lastSavedFilePath!)
-                : null,
-            tooltip: 'Share Last Saved File',
-            backgroundColor: lastSavedFilePath != null ? null : Colors.grey,
-            child: const Icon(Icons.share),
+            heroTag: "pause",
+            onPressed: pausePlaying,
+            tooltip: 'Pause',
+            child: const Icon(Icons.pause),
           ),
           const SizedBox(height: 10),
           FloatingActionButton(
@@ -444,18 +462,40 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
           const SizedBox(height: 10),
+ 
           FloatingActionButton(
-            heroTag: "start",
-            onPressed: startPlaying,
-            tooltip: 'Start',
-            child: const Icon(Icons.play_arrow),
+            heroTag: "save",
+            onPressed: isSaving ? null : saveMarkedItemsToFile,
+            tooltip: 'Save Marked Items',
+            backgroundColor: isSaving ? Colors.grey : Colors.green,
+            child: isSaving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.save),
           ),
           const SizedBox(height: 10),
           FloatingActionButton(
-            heroTag: "pause",
-            onPressed: pausePlaying,
-            tooltip: 'Pause',
-            child: const Icon(Icons.pause),
+            heroTag: "share",
+            onPressed: lastSavedFilePath != null
+                ? () => shareFile(lastSavedFilePath!)
+                : null,
+            tooltip: 'Share Last Saved File',
+            backgroundColor: lastSavedFilePath != null ? null : Colors.grey,
+            child: const Icon(Icons.share),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton(
+            heroTag: "restore",
+            onPressed: isSaving ? null : restoreMarkedItemsFromFile,
+            tooltip: 'Restore Marked Items',
+            backgroundColor: isSaving ? Colors.grey : Colors.blue,
+            child: const Icon(Icons.restore),
           ),
         ],
       ),
