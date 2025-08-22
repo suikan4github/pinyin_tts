@@ -1,4 +1,4 @@
-# pinyin_tts
+# Pinyin TTS Checker
 Androidのpinyin TTSが正確かどうか調べる。
 
 # Details
@@ -8,3 +8,6 @@ Androidのpinyin TTSが正確かどうか調べる。
 
 保存ボタンを押すと、マークした漢字のリストと現在のフォーカス位置を保存する。
 復元ボタンを押すと、保存した漢字のリストとフォーカス位置を復元する。
+
+# Screenshots
+![Screenshot](images/Screenshot_20250823-082346.png)

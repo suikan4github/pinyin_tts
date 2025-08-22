@@ -15,11 +15,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Pinyin TTS',
+      title: 'Pinyin TTS Checker',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const MyHomePage(title: 'Pinyin TTS'),
+      home: const MyHomePage(title: 'Pinyin TTS Checker'),
     );
   }
 }
