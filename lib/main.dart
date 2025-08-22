@@ -159,6 +159,52 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  void goToNextMarkedItem() {
+    if (markedItems.isEmpty) return;
+
+    final sortedMarkedItems = markedItems.toList()..sort();
+    int? nextIndex;
+
+    for (int markedIndex in sortedMarkedItems) {
+      if (markedIndex > currentIndex) {
+        nextIndex = markedIndex;
+        break;
+      }
+    }
+
+    // 現在位置より後にマークされたアイテムがない場合、最初のマークされたアイテムに移動
+    nextIndex ??= sortedMarkedItems.first;
+
+    setState(() {
+      currentIndex = nextIndex!;
+    });
+    scrollToCurrentItem();
+    speak(hanziList[currentIndex].simplified);
+  }
+
+  void goToPreviousMarkedItem() {
+    if (markedItems.isEmpty) return;
+
+    final sortedMarkedItems = markedItems.toList()..sort();
+    int? previousIndex;
+
+    for (int markedIndex in sortedMarkedItems.reversed) {
+      if (markedIndex < currentIndex) {
+        previousIndex = markedIndex;
+        break;
+      }
+    }
+
+    // 現在位置より前にマークされたアイテムがない場合、最後のマークされたアイテムに移動
+    previousIndex ??= sortedMarkedItems.last;
+
+    setState(() {
+      currentIndex = previousIndex!;
+    });
+    scrollToCurrentItem();
+    speak(hanziList[currentIndex].simplified);
+  }
+
   @override
   void dispose() {
     flutterTts.stop();
@@ -173,6 +219,16 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
         actions: [
+          IconButton(
+            onPressed: markedItems.isEmpty ? null : goToPreviousMarkedItem,
+            icon: const Icon(Icons.skip_previous),
+            tooltip: 'Previous Marked Item',
+          ),
+          IconButton(
+            onPressed: markedItems.isEmpty ? null : goToNextMarkedItem,
+            icon: const Icon(Icons.skip_next),
+            tooltip: 'Next Marked Item',
+          ),
           IconButton(
             onPressed: isPlaying && !isPaused ? pausePlaying : startPlaying,
             icon: Icon(isPlaying && !isPaused ? Icons.pause : Icons.play_arrow),
@@ -194,14 +250,26 @@ class _MyHomePageState extends State<MyHomePage> {
                   selected: isSelected,
                   selectedTileColor: Colors.blue.withOpacity(0.3),
                   leading: CircleAvatar(child: Text('${index + 1}')),
-                  title: Text(
-                    item.pinyinWithTone,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          item.pinyinWithTone,
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                      if (isMarked)
+                        const Icon(Icons.star, color: Colors.orange, size: 24),
+                      if (!isMarked)
+                        const SizedBox(width: 24), // マークがない場合の空白スペース
+                      const Expanded(flex: 1, child: SizedBox()), // 右側のスペース
+                    ],
                   ),
                   subtitle: Text(
                     item.simplified,
@@ -210,9 +278,6 @@ class _MyHomePageState extends State<MyHomePage> {
                       color: isSelected ? Colors.blue[700] : Colors.grey[600],
                     ),
                   ),
-                  trailing: isMarked
-                      ? const Icon(Icons.star, color: Colors.orange)
-                      : null,
                   onTap: () => onItemTapped(index),
                 );
               },
@@ -220,6 +285,22 @@ class _MyHomePageState extends State<MyHomePage> {
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
+          FloatingActionButton(
+            heroTag: "prev_marked",
+            onPressed: markedItems.isEmpty ? null : goToPreviousMarkedItem,
+            tooltip: 'Previous Marked Item',
+            backgroundColor: markedItems.isEmpty ? Colors.grey : null,
+            child: const Icon(Icons.skip_previous),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton(
+            heroTag: "next_marked",
+            onPressed: markedItems.isEmpty ? null : goToNextMarkedItem,
+            tooltip: 'Next Marked Item',
+            backgroundColor: markedItems.isEmpty ? Colors.grey : null,
+            child: const Icon(Icons.skip_next),
+          ),
+          const SizedBox(height: 10),
           FloatingActionButton(
             heroTag: "mark",
             onPressed: toggleMark,
