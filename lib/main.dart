@@ -41,6 +41,7 @@ class _MyHomePageState extends State<MyHomePage> {
   late FlutterTts flutterTts;
   late ScrollController scrollController;
   List<HanziItem> hanziList = [];
+  List<GlobalKey> itemKeys = [];
   Set<int> markedItems = {};
   int currentIndex = 0;
   bool isPlaying = false;
@@ -82,6 +83,10 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         )
         .toList();
+    
+    // 各アイテムにGlobalKeyを生成
+    itemKeys = List.generate(hanziList.length, (index) => GlobalKey());
+    
     setState(() {});
   }
 
@@ -125,15 +130,13 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void scrollToCurrentItem() {
-    if (scrollController.hasClients) {
-      // ListTileの高さを約72pxと想定してスクロール位置を計算
-      const itemHeight = 72.0;
-      final targetOffset = currentIndex * itemHeight;
-      
-      scrollController.animateTo(
-        targetOffset,
+    if (currentIndex < itemKeys.length &&
+        itemKeys[currentIndex].currentContext != null) {
+      Scrollable.ensureVisible(
+        itemKeys[currentIndex].currentContext!,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
+        alignment: 0.5, // 画面中央に配置
       );
     }
   }
@@ -187,6 +190,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 final isMarked = markedItems.contains(index);
 
                 return ListTile(
+                  key: itemKeys[index],
                   selected: isSelected,
                   selectedTileColor: Colors.blue.withOpacity(0.3),
                   leading: CircleAvatar(child: Text('${index + 1}')),
