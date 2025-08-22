@@ -41,6 +41,7 @@ class _MyHomePageState extends State<MyHomePage> {
   late FlutterTts flutterTts;
   late ScrollController scrollController;
   List<HanziItem> hanziList = [];
+  Set<int> markedItems = {};
   int currentIndex = 0;
   bool isPlaying = false;
   bool isPaused = false;
@@ -145,6 +146,16 @@ class _MyHomePageState extends State<MyHomePage> {
     speak(hanziList[index].simplified);
   }
 
+  void toggleMark() {
+    setState(() {
+      if (markedItems.contains(currentIndex)) {
+        markedItems.remove(currentIndex);
+      } else {
+        markedItems.add(currentIndex);
+      }
+    });
+  }
+
   @override
   void dispose() {
     flutterTts.stop();
@@ -173,6 +184,7 @@ class _MyHomePageState extends State<MyHomePage> {
               itemBuilder: (context, index) {
                 final item = hanziList[index];
                 final isSelected = index == currentIndex;
+                final isMarked = markedItems.contains(index);
 
                 return ListTile(
                   selected: isSelected,
@@ -194,6 +206,9 @@ class _MyHomePageState extends State<MyHomePage> {
                       color: isSelected ? Colors.blue[700] : Colors.grey[600],
                     ),
                   ),
+                  trailing: isMarked
+                      ? const Icon(Icons.star, color: Colors.orange)
+                      : null,
                   onTap: () => onItemTapped(index),
                 );
               },
@@ -201,6 +216,20 @@ class _MyHomePageState extends State<MyHomePage> {
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
+          FloatingActionButton(
+            heroTag: "mark",
+            onPressed: toggleMark,
+            tooltip: markedItems.contains(currentIndex) ? 'Unmark' : 'Mark',
+            backgroundColor: markedItems.contains(currentIndex)
+                ? Colors.orange
+                : null,
+            child: Icon(
+              markedItems.contains(currentIndex)
+                  ? Icons.star
+                  : Icons.star_border,
+            ),
+          ),
+          const SizedBox(height: 10),
           FloatingActionButton(
             heroTag: "start",
             onPressed: startPlaying,
