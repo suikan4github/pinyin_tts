@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <application
-        android:label="pinyin_tts"
+        android:label="Pinyin TTS"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

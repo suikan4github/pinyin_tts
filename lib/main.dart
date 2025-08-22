@@ -135,13 +135,29 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void scrollToCurrentItem() {
-    if (currentIndex < itemKeys.length &&
-        itemKeys[currentIndex].currentContext != null) {
-      Scrollable.ensureVisible(
-        itemKeys[currentIndex].currentContext!,
-        duration: const Duration(milliseconds: 300),
+    if (currentIndex < 0 || currentIndex >= hanziList.length) return;
+    
+    if (scrollController.hasClients) {
+      // より正確な計算のために、実際のListViewの寸法を使用
+      final viewportHeight = scrollController.position.viewportDimension;
+      final maxOffset = scrollController.position.maxScrollExtent;
+      final minOffset = scrollController.position.minScrollExtent;
+      
+      // 全体のスクロール可能範囲をアイテム数で割って平均的なアイテム高さを算出
+      final totalScrollableHeight = maxOffset + viewportHeight;
+      final averageItemHeight = totalScrollableHeight / hanziList.length;
+      
+      // ターゲット位置を計算
+      final targetOffset = currentIndex * averageItemHeight;
+      
+      // ターゲットアイテムを画面の中央に配置
+      final centeredOffset = targetOffset - (viewportHeight / 2) + (averageItemHeight / 2);
+      final adjustedOffset = centeredOffset.clamp(minOffset, maxOffset);
+      
+      scrollController.animateTo(
+        adjustedOffset,
+        duration: const Duration(milliseconds: 600),
         curve: Curves.easeInOut,
-        alignment: 0.5, // 画面中央に配置
       );
     }
   }
@@ -150,7 +166,12 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       currentIndex = index;
     });
-    scrollToCurrentItem();
+    
+    // ウィジェットの更新が完了した後にスクロールを実行
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      scrollToCurrentItem();
+    });
+    
     speak(hanziList[index].simplified);
   }
 
@@ -327,7 +348,12 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       currentIndex = nextIndex!;
     });
-    scrollToCurrentItem();
+    
+    // ウィジェットの更新が完了した後にスクロールを実行
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      scrollToCurrentItem();
+    });
+    
     speak(hanziList[currentIndex].simplified);
   }
 
@@ -350,8 +376,100 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       currentIndex = previousIndex!;
     });
-    scrollToCurrentItem();
+    
+    // ウィジェットの更新が完了した後にスクロールを実行
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      scrollToCurrentItem();
+    });
+    
     speak(hanziList[currentIndex].simplified);
+  }
+
+  Future<void> showJumpToNumberDialog() async {
+    final TextEditingController controller = TextEditingController();
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('番号を指定してジャンプ'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text('移動先の番号を入力してください (1-${hanziList.length})'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: '番号',
+                    border: OutlineInputBorder(),
+                    hintText: '例: 100',
+                  ),
+                  autofocus: true,
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('キャンセル'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('ジャンプ'),
+              onPressed: () {
+                final input = controller.text.trim();
+                if (input.isNotEmpty) {
+                  final number = int.tryParse(input);
+                  if (number != null &&
+                      number >= 1 &&
+                      number <= hanziList.length) {
+                    jumpToNumber(number);
+                    Navigator.of(context).pop();
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '無効な番号です。1から${hanziList.length}の間で入力してください。',
+                        ),
+                      ),
+                    );
+                  }
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void jumpToNumber(int number) {
+    final index = number - 1; // 1-based to 0-based index
+    setState(() {
+      currentIndex = index;
+    });
+    
+    // ウィジェットの更新が完了した後にスクロールを実行
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // 少し遅延を入れてより確実にスクロール
+      Future.delayed(const Duration(milliseconds: 100), () {
+        scrollToCurrentItem();
+      });
+    });
+    
+    speak(hanziList[currentIndex].simplified);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${number}番目のアイテムにジャンプしました (インデックス: $index)'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -496,6 +614,14 @@ class _MyHomePageState extends State<MyHomePage> {
             tooltip: 'Restore Marked Items',
             backgroundColor: isSaving ? Colors.grey : Colors.blue,
             child: const Icon(Icons.restore),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton(
+            heroTag: "jump",
+            onPressed: showJumpToNumberDialog,
+            tooltip: 'Jump to Number',
+            backgroundColor: Colors.deepPurple,
+            child: const Icon(Icons.tag),
           ),
         ],
       ),
